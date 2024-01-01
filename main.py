@@ -85,7 +85,7 @@ class Renderer:
             pygame.display.flip()
             self.clock.tick(fps)
             self.screen.fill(black)
-            self.quit()
+            self.handle_events()
         print("Game over")
 
     def add_game_object(self, obj: Object):
@@ -95,10 +95,35 @@ class Renderer:
         self.add_game_object(obj)
         self.walls.append(obj)
 
+    def get_walls(self):
+        return self.walls
+
     def quit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.done = True
+
+    def add_hero(self, hero):
+        self.add_game_object(hero)
+        self.hero = hero
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.done = True
+
+        pressed = pygame.key.get_pressed()
+        if pressed[pygame.K_UP]:
+            self.hero.set_direction(Direction.UP)
+        elif pressed[pygame.K_LEFT]:
+            self.hero.set_direction(Direction.LEFT)
+        elif pressed[pygame.K_DOWN]:
+            self.hero.set_direction(Direction.DOWN)
+        elif pressed[pygame.K_RIGHT]:
+            self.hero.set_direction(Direction.RIGHT)
+
+    def get_game_objects(self):
+        return self.game_objects
 
 
 class Controller:
@@ -219,6 +244,45 @@ class Ghost(MovableObject):
         self.game_controller = game_controller
 
 
+class Hero(MovableObject):
+    def __init__(self, in_surface, x, y, in_size: int):
+        super().__init__(in_surface, x, y, in_size, (255, 255, 0), False)
+        self.last_non_colliding_position = (0, 0)
+
+    def tick(self):
+        if self.x < 0:
+            self.x = self.renderer.width
+
+        if self.x > self.renderer.width:
+            self.x = 0
+
+        self.last_non_colliding_position = self.get_position()
+
+        if self.check_collision_in_direction(self.dir_buffer)[0]:
+            self.automatic_move(self.cur_dir)
+        else:
+            self.automatic_move(self.dir_buffer)
+            self.current_direction = self.dir_buffer
+
+        if self.collides_with_wall((self.x, self.y)):
+            self.set_position(self.last_non_colliding_position[0], self.last_non_colliding_position[1])
+
+    def automatic_move(self, in_direction: Direction):
+        collision_result = self.check_collision_in_direction(in_direction)
+
+        desired_position_collides = collision_result[0]
+        if not desired_position_collides:
+            self.last_working_direction = self.cur_dir
+            desired_position = collision_result[1]
+            self.set_position(desired_position[0], desired_position[1])
+        else:
+            self.cur_dir = self.last_working_direction
+
+    def draw(self):
+        half_size = self.size / 2
+        pygame.draw.circle(self.surface, self.color, (self.x + half_size, self.y + half_size), half_size)
+
+
 if __name__ == "__main__":
     unified_size = 32
     pacman_game = Controller()
@@ -236,4 +300,6 @@ if __name__ == "__main__":
                       pacman_game.ghost_colors[i % 4])
         game_renderer.add_game_object(ghost)
 
+    pacman = Hero(game_renderer, unified_size, unified_size, unified_size)
+    game_renderer.add_hero(pacman)
     game_renderer.tick(120)
