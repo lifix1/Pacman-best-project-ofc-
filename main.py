@@ -1,4 +1,7 @@
 import pygame
+import random
+import tcod
+import numpy
 
 
 class Direction():
@@ -101,6 +104,100 @@ class Renderer:
                 self.done = True
 
 
+class MovableObject(Object):
+    def __init__(self, surface, x, y, size: int, color=(255, 0, 0), circle: bool = False):
+        super().__init__(surface, x, y, size, color, circle)
+        self.cur_dir = Direction.NONE
+        self.dir_buffer = Direction.NONE
+        self.last_dir = Direction.NONE
+        self.queue = []
+        self.next_target = None
+
+    def get_next_location(self):
+        if len(self.queue) == 0:
+            return None
+        else:
+            self.queue.pop(0)
+
+    def set_direction(self, direction):
+        self.cur_dir = direction
+        self.dir_buffer = direction
+
+    def collides_with_wall(self, position):
+        collision_rect = pygame.Rect(position[0], position[1], self.size, self.size)
+        collides = False
+        walls = self.renderer.get_walls()
+        for wall in walls:
+            collides = collision_rect.colliderect(wall.get_shape())
+            if collides:
+                break
+        return collides
+
+    def check_collision_in_direction(self, direction: Direction):
+        des_pos = (0, 0)
+        if direction == Direction.NONE:
+            return False, des_pos
+        if direction == Direction.UP:
+            des_pos = (self.x, self.y - 1)
+        elif direction == Direction.DOWN:
+            des_pos = (self.x, self.y + 1)
+        elif direction == Direction.LEFT:
+            des_pos = (self.x - 1, self.y)
+        elif direction == Direction.RIGHT:
+            des_pos = (self.x + 1, self.y)
+
+        return self.collides_with_wall(des_pos), des_pos
+
+
+class Ghost(MovableObject):
+    def __init__(self, surface, x, y, size: int, game_controller, color=(255, 0, 0)):
+        super().__init__(surface, x, y, size, color, False)
+        self.game_controller = game_controller
+
+    def reached_target(self):
+        if (self.x, self.y) == self.next_target:
+            self.next_target = self.get_next_location()
+        self.cur_dir = self.calculate_direction_to_next_target()
+
+    def set_new_path(self, in_path):
+        for item in in_path:
+            self.queue.append(item)
+        self.next_target = self.get_next_location()
+
+    def calculate_direction_to_next_target(self):
+        if self.next_target is None:
+            self.game_controller.request_new_random_path(self)
+            return Direction.NONE
+        diff_x = self.next_target[0] - self.x
+        diff_y = self.next_target[1] - self.y
+        if diff_x == 0:
+            return Direction.DOWN if diff_y > 0 else Direction.UP
+        if diff_y == 0:
+            return Direction.LEFT if diff_x < 0 else Direction.RIGHT
+        self.game_controller.request_new_random_path(self)
+        return Direction.NONE
+
+    def automatic_move(self, direction: Direction):
+        if direction == Direction.UP:
+            self.set_position(self.x, self.y - 1)
+        elif direction == Direction.DOWN:
+            self.set_position(self.x, self.y + 1)
+        elif direction == Direction.LEFT:
+            self.set_position(self.x - 1, self.y)
+        elif direction == Direction.RIGHT:
+            self.set_position(self.x + 1, self.y)
+
+
+class Pathfinder:
+    def __init__(self, arr):
+        cost = numpy.array(arr, dtype=numpy.bool_).tolist()
+        self.pf = tcod.path.AStar(cost=cost, diagonal=0)
+
+    def get_path(self, from_x, from_y, to_x, to_y):
+        res = self.pf.get_path(from_x, from_y, to_x, to_y)
+        return [(sub[1], sub[0]) for sub in res]
+
+
 class Controller:
     def __init__(self):
         self.ascii_maze = [
@@ -150,6 +247,16 @@ class Controller:
             (0, 255, 255),
             (255, 184, 82)
         ]
+        self.p = Pathfinder(self.numpy_maze)
+
+    def request_new_random_path(self, in_ghost: Ghost):
+        random_space = random.choice(self.reachable_spaces)
+        current_maze_coord = translate_screen_to_maze(in_ghost.get_position())
+
+        path = self.p.get_path(current_maze_coord[1], current_maze_coord[0], random_space[1],
+                               random_space[0])
+        test_path = [translate_maze_to_screen(item) for item in path]
+        in_ghost.set_new_path(test_path)
 
     def convert(self):
         for x, row in enumerate(self.ascii_maze):
@@ -166,57 +273,6 @@ class Controller:
                     self.point_spaces.append((y, x))
                     self.reachable_spaces.append((y, x))
             self.numpy_maze.append(binary_row)
-
-
-class MovableObject(Object):
-    def __init__(self, surface, x, y, size: int, color=(255, 0, 0), circle: bool = False):
-        super().__init__(surface, x, y, size, color, circle)
-        self.cur_dir = Direction.NONE
-        self.dir_buffer = Direction.NONE
-        self.last_dir = Direction.NONE
-        self.queue = []
-        self.next_target = None
-
-    def get_next_location(self):
-        if len(self.queue) == 0:
-            return None
-        else:
-            self.queue.pop(0)
-
-    def set_direction(self, direction):
-        self.cur_dir = direction
-        self.dir_buffer = direction
-
-    def collides_with_wall(self, position):
-        collision_rect = pygame.Rect(position[0], position[1], self.size, self.size)
-        collides = False
-        walls = self.renderer.get_walls()
-        for wall in walls:
-            collides = collision_rect.colliderect(wall.get_shape())
-            if collides:
-                break
-        return collides
-
-    def check_collision_in_direction(self, direction: Direction):
-        des_position = (0, 0)
-        if direction == Direction.NONE:
-            return False, des_position
-        if direction == Direction.UP:
-            des_position = (self.x, self.y - 1)
-        elif direction == Direction.DOWN:
-            des_position = (self.x, self.y + 1)
-        elif direction == Direction.LEFT:
-            des_position = (self.x - 1, self.y)
-        elif direction == Direction.RIGHT:
-            des_position = (self.x + 1, self.y)
-
-        return self.collides_with_wall(des_position), des_position
-
-
-class Ghost(MovableObject):
-    def __init__(self, surface, x, y, size: int, game_controller, color=(255, 0, 0)):
-        super().__init__(surface, x, y, size, color, False)
-        self.game_controller = game_controller
 
 
 if __name__ == "__main__":
