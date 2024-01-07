@@ -1,23 +1,23 @@
 import pygame
 import random
 import tcod
-import numpy
+import numpy as np
 
 
-class Direction():
-    LEFT = 0
-    UP = 1
-    RIGHT = 2
-    DOWN = 3,
-    NONE = 4
+
+LEFT = 0
+UP = 1
+RIGHT = 2
+DOWN = 3,
+NONE = 4
 
 
-def translate_screen_to_maze(coords, size=32):
-    return int(coords[0] / size), int(coords[1] / size)
+def trans_2(coords):
+    return int(coords[0] / 32), int(coords[1] / 32)
 
 
-def translate_maze_to_screen(coords, size=32):
-    return coords[0] * size, coords[1] * size
+def trans_1(coords):
+    return coords[0] * 32, coords[1] * 32
 
 
 class Object:
@@ -25,7 +25,7 @@ class Object:
                  size: int, color=(255, 0, 0),
                  circle: bool = False):
         self.size = size
-        self.renderer = surface
+        self.rend = surface
         self.surface = surface.screen
         self.y = y
         self.x = x
@@ -40,10 +40,10 @@ class Object:
                                (self.x, self.y),
                                self.size)
         else:
-            rect_object = pygame.Rect(self.x, self.y, self.size, self.size)
+            object = pygame.Rect(self.x, self.y, self.size, self.size)
             pygame.draw.rect(self.surface,
                              self.color,
-                             rect_object,
+                             object,
                              border_radius=4)
 
     def tick(self):
@@ -52,11 +52,11 @@ class Object:
     def get_shape(self):
         return self.shape
 
-    def set_position(self, x, y):
+    def set_pos(self, x, y):
         self.x = x
         self.y = y
 
-    def get_position(self):
+    def get_pos(self):
         return self.x, self.y
 
 
@@ -73,17 +73,17 @@ class Renderer:
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption('Pacman')
         self.clock = pygame.time.Clock()
-        self.done = False
-        self.game_objects = []
+        self.ready = False
+        self.objects = []
         self.walls = []
         self.points = []
 
     def tick(self, fps: int):
         black = (0, 0, 0)
-        while not self.done:
-            for game_object in self.game_objects:
-                game_object.tick()
-                game_object.draw()
+        while not self.ready:
+            for object in self.objects:
+                object.tick()
+                object.draw()
 
             pygame.display.flip()
             self.clock.tick(fps)
@@ -91,106 +91,113 @@ class Renderer:
             self.quit()
         print("Game over")
 
-    def add_game_object(self, obj: Object):
-        self.game_objects.append(obj)
+    def add_object(self, obj: Object):
+        self.objects.append(obj)
 
     def add_wall(self, obj: Wall):
-        self.add_game_object(obj)
+        self.add_object(obj)
         self.walls.append(obj)
 
     def quit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.done = True
+                self.ready = True
 
 
 class MovableObject(Object):
     def __init__(self, surface, x, y, size: int, color=(255, 0, 0), circle: bool = False):
         super().__init__(surface, x, y, size, color, circle)
-        self.cur_dir = Direction.NONE
-        self.dir_buffer = Direction.NONE
-        self.last_dir = Direction.NONE
-        self.queue = []
+        self.cur_dir = NONE
+        self.dir_buffer = NONE
+        self.last_dir = NONE
+        self.porydok = []
         self.next_target = None
 
-    def get_next_location(self):
-        if len(self.queue) == 0:
-            return None
-        else:
-            self.queue.pop(0)
+    def next_coord(self):
+        return None if len(self.porydok) == 0 else self.porydok.pop(0)
 
-    def set_direction(self, direction):
+    def set_dir(self, direction):
         self.cur_dir = direction
         self.dir_buffer = direction
 
-    def collides_with_wall(self, position):
-        collision_rect = pygame.Rect(position[0], position[1], self.size, self.size)
+    def bit_wall(self, pos):
+        collision = pygame.Rect(pos[0], pos[1], self.size, self.size)
         collides = False
-        walls = self.renderer.get_walls()
+        walls = self.rend.get_walls()
         for wall in walls:
-            collides = collision_rect.colliderect(wall.get_shape())
+            collides = collision.colliderect(wall.get_shape())
             if collides:
                 break
         return collides
 
-    def check_collision_in_direction(self, direction: Direction):
+    def check_bit_direction(self, direction):
         des_pos = (0, 0)
-        if direction == Direction.NONE:
+        if direction == NONE:
             return False, des_pos
-        if direction == Direction.UP:
+        if direction == UP:
             des_pos = (self.x, self.y - 1)
-        elif direction == Direction.DOWN:
+        elif direction == DOWN:
             des_pos = (self.x, self.y + 1)
-        elif direction == Direction.LEFT:
+        elif direction == LEFT:
             des_pos = (self.x - 1, self.y)
-        elif direction == Direction.RIGHT:
+        elif direction == RIGHT:
             des_pos = (self.x + 1, self.y)
 
-        return self.collides_with_wall(des_pos), des_pos
+        return self.bit_wall(des_pos), des_pos
+
+    def automatic_move(self, direction):
+        pass
+
+    def tick(self):
+        self.ready_aim()
+        self.automatic_move(self.cur_dir)
+
+    def ready_aim(self):
+        pass
 
 
 class Ghost(MovableObject):
-    def __init__(self, surface, x, y, size: int, game_controller, color=(255, 0, 0)):
+    def __init__(self, surface, x, y, size: int, controller, color=(255, 0, 0)):
         super().__init__(surface, x, y, size, color, False)
-        self.game_controller = game_controller
+        self.controller = controller
 
-    def reached_target(self):
+    def ready_aim(self):
         if (self.x, self.y) == self.next_target:
-            self.next_target = self.get_next_location()
-        self.cur_dir = self.calculate_direction_to_next_target()
+            self.next_target = self.next_coord()
+        self.cur_dir = self.calc_dir_next_target()
 
-    def set_new_path(self, in_path):
-        for item in in_path:
-            self.queue.append(item)
-        self.next_target = self.get_next_location()
+    def set_new_path(self, path):
+        for item in path:
+            self.porydok.append(item)
+        self.next_target = self.next_coord()
 
-    def calculate_direction_to_next_target(self):
+    def calc_dir_next_target(self):
         if self.next_target is None:
-            self.game_controller.request_new_random_path(self)
-            return Direction.NONE
+            self.controller.make_new_way(self)
+            return NONE
         diff_x = self.next_target[0] - self.x
         diff_y = self.next_target[1] - self.y
         if diff_x == 0:
-            return Direction.DOWN if diff_y > 0 else Direction.UP
+            return DOWN if diff_y > 0 else UP
         if diff_y == 0:
-            return Direction.LEFT if diff_x < 0 else Direction.RIGHT
-        self.game_controller.request_new_random_path(self)
-        return Direction.NONE
+            return LEFT if diff_x < 0 else RIGHT
+        self.controller.make_new_way(self)
+        return NONE
 
-    def automatic_move(self, direction: Direction):
-        if direction == Direction.UP:
-            self.set_position(self.x, self.y - 1)
-        elif direction == Direction.DOWN:
-            self.set_position(self.x, self.y + 1)
-        elif direction == Direction.LEFT:
-            self.set_position(self.x - 1, self.y)
-        elif direction == Direction.RIGHT:
-            self.set_position(self.x + 1, self.y)
+    def automatic_move(self, direction):
+        if direction == UP:
+            self.set_pos(self.x, self.y - 1)
+        elif direction == DOWN:
+            self.set_pos(self.x, self.y + 1)
+        elif direction == LEFT:
+            self.set_pos(self.x - 1, self.y)
+        elif direction == RIGHT:
+            self.set_pos(self.x + 1, self.y)
 
 
 class Pathfinder:
     def __init__(self, arr):
-        cost = numpy.array(arr, dtype=numpy.bool_).tolist()
+        cost = np.array(arr, dtype=np.bool_).tolist()
         self.pf = tcod.path.AStar(cost=cost, diagonal=0)
 
     def get_path(self, from_x, from_y, to_x, to_y):
@@ -249,14 +256,14 @@ class Controller:
         ]
         self.p = Pathfinder(self.numpy_maze)
 
-    def request_new_random_path(self, in_ghost: Ghost):
+    def make_new_way(self, ghost: Ghost):
         random_space = random.choice(self.reachable_spaces)
-        current_maze_coord = translate_screen_to_maze(in_ghost.get_position())
+        current_maze_coord = trans_2(ghost.get_pos())
 
         path = self.p.get_path(current_maze_coord[1], current_maze_coord[0], random_space[1],
                                random_space[0])
-        test_path = [translate_maze_to_screen(item) for item in path]
-        in_ghost.set_new_path(test_path)
+        test_path = [trans_1(item) for item in path]
+        ghost.set_new_path(test_path)
 
     def convert(self):
         for x, row in enumerate(self.ascii_maze):
@@ -287,9 +294,9 @@ if __name__ == "__main__":
                 game_renderer.add_wall(Wall(game_renderer, x, y, unified_size))
 
     for i, ghost_spawn in enumerate(pacman_game.ghost_spawns):
-        translated = translate_maze_to_screen(ghost_spawn)
+        translated = trans_1(ghost_spawn)
         ghost = Ghost(game_renderer, translated[0], translated[1], unified_size, pacman_game,
                       pacman_game.ghost_colors[i % 4])
-        game_renderer.add_game_object(ghost)
+        game_renderer.add_object(ghost)
 
     game_renderer.tick(120)
