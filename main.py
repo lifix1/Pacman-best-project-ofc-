@@ -1,9 +1,7 @@
 import pygame
 import random
-import tcod
 import numpy as np
-
-
+import tcod
 
 LEFT = 0
 UP = 1
@@ -18,6 +16,14 @@ def trans_2(coords):
 
 def trans_1(coords):
     return coords[0] * 32, coords[1] * 32
+
+
+def load_level(filename):
+    filename = "data/" + filename
+    with open(filename, 'r') as mapFile:
+        level_map = [line.rstrip() for line in mapFile]
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
 class Object:
@@ -79,7 +85,6 @@ class Renderer:
         self.points = []
 
     def tick(self, fps: int):
-        black = (0, 0, 0)
         while not self.ready:
             for object in self.objects:
                 object.tick()
@@ -87,8 +92,8 @@ class Renderer:
 
             pygame.display.flip()
             self.clock.tick(fps)
-            self.screen.fill(black)
-            self.quit()
+            self.screen.fill((0, 0, 0))
+            self.events_helper()
         print("Game over")
 
     def add_object(self, obj: Object):
@@ -98,10 +103,33 @@ class Renderer:
         self.add_object(obj)
         self.walls.append(obj)
 
+    def get_walls(self):
+        return self.walls
+
     def quit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.ready = True
+
+    def add_hero(self, hero):
+        self.add_object(hero)
+        self.hero = hero
+
+    def events_helper(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.ready = True
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                self.hero.set_dir(UP)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+                self.hero.set_dir(LEFT)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                self.hero.set_dir(DOWN)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                self.hero.set_dir(RIGHT)
+
+    def get_game_objects(self):
+        return self.objects
 
 
 class MovableObject(Object):
@@ -130,20 +158,20 @@ class MovableObject(Object):
                 break
         return collides
 
-    def check_bit_direction(self, direction):
-        des_pos = (0, 0)
+    def check_reachable(self, direction: int):
+        des_position = (0, 0)
         if direction == NONE:
-            return False, des_pos
+            return False, des_position
         if direction == UP:
-            des_pos = (self.x, self.y - 1)
+            des_position = (self.x, self.y - 1)
         elif direction == DOWN:
-            des_pos = (self.x, self.y + 1)
+            des_position = (self.x, self.y + 1)
         elif direction == LEFT:
-            des_pos = (self.x - 1, self.y)
+            des_position = (self.x - 1, self.y)
         elif direction == RIGHT:
-            des_pos = (self.x + 1, self.y)
+            des_position = (self.x + 1, self.y)
 
-        return self.bit_wall(des_pos), des_pos
+        return self.bit_wall(des_position), des_position
 
     def automatic_move(self, direction):
         pass
@@ -207,41 +235,9 @@ class Pathfinder:
 
 class Controller:
     def __init__(self):
-        self.ascii_maze = [
-            "XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-            "XP           XX            X",
-            "X XXXX XXXXX XX XXXXX XXXX X",
-            "X XXXX XXXXX XX XXXXX XXXX X",
-            "X XXXX XXXXX XX XXXXX XXXX X",
-            "X                          X",
-            "X XXXX XX XXXXXXXX XX XXXX X",
-            "X XXXX XX XXXXXXXX XX XXXX X",
-            "X      XX    XX    XX      X",
-            "XXXXXX XXXXX XX XXXXX XXXXXX",
-            "XXXXXX XXXXX XX XXXXX XXXXXX",
-            "XXXXXX XX          XX XXXXXX",
-            "XXXXXX XX XXXXXXXX XX XXXXXX",
-            "XXXXXX XX X   G  X XX XXXXXX",
-            "          X G    X          ",
-            "XXXXXX XX X   G  X XX XXXXXX",
-            "XXXXXX XX XXXXXXXX XX XXXXXX",
-            "XXXXXX XX          XX XXXXXX",
-            "XXXXXX XX XXXXXXXX XX XXXXXX",
-            "XXXXXX XX XXXXXXXX XX XXXXXX",
-            "X            XX            X",
-            "X XXXX XXXXX XX XXXXX XXXX X",
-            "X XXXX XXXXX XX XXXXX XXXX X",
-            "X   XX       G        XX   X",
-            "XXX XX XX XXXXXXXX XX XX XXX",
-            "XXX XX XX XXXXXXXX XX XX XXX",
-            "X      XX    XX    XX      X",
-            "X XXXXXXXXXX XX XXXXXXXXXX X",
-            "X XXXXXXXXXX XX XXXXXXXXXX X",
-            "X                          X",
-            "XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-        ]
+        self.ascii_maze = load_level('map1.txt')
 
-        self.numpy_maze = []
+        self.maze = []
         self.point_spaces = []
         self.reachable_spaces = []
         self.ghost_spawns = []
@@ -254,7 +250,7 @@ class Controller:
             (0, 255, 255),
             (255, 184, 82)
         ]
-        self.p = Pathfinder(self.numpy_maze)
+        self.p = Pathfinder(self.maze)
 
     def make_new_way(self, ghost: Ghost):
         random_space = random.choice(self.reachable_spaces)
@@ -279,7 +275,46 @@ class Controller:
                     binary_row.append(1)
                     self.point_spaces.append((y, x))
                     self.reachable_spaces.append((y, x))
-            self.numpy_maze.append(binary_row)
+            self.maze.append(binary_row)
+
+
+class Hero(MovableObject):
+    def __init__(self, in_surface, x, y, size: int):
+        super().__init__(in_surface, x, y, size, (255, 255, 0), False)
+        self.last_position = (0, 0)
+
+    def tick(self):
+        if self.x < 0:
+            self.x = self.rend.width
+
+        if self.x > self.rend.width:
+            self.x = 0
+
+        self.last_position = self.get_pos()
+
+        if self.check_reachable(self.dir_buffer)[0]:
+            self.automatic_move(self.cur_dir)
+        else:
+            self.automatic_move(self.dir_buffer)
+            self.current_direction = self.dir_buffer
+
+        if self.bit_wall((self.x, self.y)):
+            self.set_pos(self.last_position[0], self.last_position[1])
+
+    def automatic_move(self, in_direction: int):
+        if_collides = self.check_reachable(in_direction)
+
+        next_pos = if_collides[0]
+        if not next_pos:
+            self.last_dir = self.cur_dir
+            desired_position = if_collides[1]
+            self.set_pos(desired_position[0], desired_position[1])
+        else:
+            self.cur_dir = self.last_dir
+
+    def draw(self):
+        half_size = self.size / 2
+        pygame.draw.circle(self.surface, self.color, (self.x + half_size, self.y + half_size), half_size)
 
 
 if __name__ == "__main__":
@@ -288,7 +323,7 @@ if __name__ == "__main__":
     size = pacman_game.size
     game_renderer = Renderer(size[0] * unified_size, size[1] * unified_size)
 
-    for y, row in enumerate(pacman_game.numpy_maze):
+    for y, row in enumerate(pacman_game.maze):
         for x, column in enumerate(row):
             if column == 0:
                 game_renderer.add_wall(Wall(game_renderer, x, y, unified_size))
@@ -298,5 +333,6 @@ if __name__ == "__main__":
         ghost = Ghost(game_renderer, translated[0], translated[1], unified_size, pacman_game,
                       pacman_game.ghost_colors[i % 4])
         game_renderer.add_object(ghost)
-
+    pacman = Hero(game_renderer, unified_size, unified_size, unified_size)
+    game_renderer.add_hero(pacman)
     game_renderer.tick(120)
