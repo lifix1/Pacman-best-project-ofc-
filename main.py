@@ -3,11 +3,27 @@ import random
 import numpy as np
 import tcod
 
+
 LEFT = 0
 UP = 1
 RIGHT = 2
 DOWN = 3,
 NONE = 4
+running = True
+WIDTH = 1920
+HEIGHT = 1080
+
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Заставка для игры")
+background = pygame.image.load("data/fon.jpg")
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            running = False
+    screen.blit(background, (0, 0))
+    pygame.display.flip()
 
 
 def trans_2(coords):
