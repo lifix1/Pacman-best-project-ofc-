@@ -3,7 +3,6 @@ import random
 import numpy as np
 import tcod
 
-
 LEFT = 0
 UP = 1
 RIGHT = 2
@@ -12,7 +11,6 @@ NONE = 4
 running = True
 WIDTH = 1920
 HEIGHT = 1080
-
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
@@ -138,6 +136,17 @@ class Renderer:
     def events_helper(self):
         if self.hero.get_pos() == ghost.get_pos():
             self.ready = True
+            running = True
+            screen = pygame.display.set_mode((WIDTH, HEIGHT))
+            pygame.display.set_caption("Заставка для игры")
+            background = pygame.image.load("data/fon.jpg")
+
+            while running:
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        running = False
+                screen.blit(background, (0, 0))
+                pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.ready = True
