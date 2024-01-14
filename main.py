@@ -83,6 +83,7 @@ class Renderer:
         self.objects = []
         self.walls = []
         self.points = []
+        self.cookies = []
 
     def tick(self, fps: int):
         while not self.ready:
@@ -103,6 +104,9 @@ class Renderer:
         self.add_object(obj)
         self.walls.append(obj)
 
+    def get_cookies(self):
+        return self.cookies
+
     def get_walls(self):
         return self.walls
 
@@ -116,6 +120,8 @@ class Renderer:
         self.hero = hero
 
     def events_helper(self):
+        if self.hero.get_pos() == ghost.get_pos():
+            self.ready = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.ready = True
@@ -131,6 +137,10 @@ class Renderer:
     def get_game_objects(self):
         return self.objects
 
+    def add_cookie(self, obj: Object):
+        self.objects.append(obj)
+        self.cookies.append(obj)
+
 
 class MovableObject(Object):
     def __init__(self, surface, x, y, size: int, color=(255, 0, 0), circle: bool = False):
@@ -140,6 +150,8 @@ class MovableObject(Object):
         self.last_dir = NONE
         self.porydok = []
         self.next_target = None
+        self.x = x
+        self.y = y
 
     def next_coord(self):
         return None if len(self.porydok) == 0 else self.porydok.pop(0)
@@ -241,6 +253,7 @@ class Controller:
         self.point_spaces = []
         self.reachable_spaces = []
         self.ghost_spawns = []
+        self.cookie_spaces = []
 
         self.size = (0, 0)
         self.convert()
@@ -274,14 +287,16 @@ class Controller:
                 else:
                     binary_row.append(1)
                     self.point_spaces.append((y, x))
+                    self.cookie_spaces.append((y, x))
                     self.reachable_spaces.append((y, x))
             self.maze.append(binary_row)
 
 
 class Hero(MovableObject):
-    def __init__(self, in_surface, x, y, size: int):
-        super().__init__(in_surface, x, y, size, (255, 255, 0), False)
+    def __init__(self, surface, x, y, size: int):
+        super().__init__(surface, x, y, size, (255, 255, 0), False)
         self.last_position = (0, 0)
+        self.score = 0
 
     def tick(self):
         if self.x < 0:
@@ -301,6 +316,8 @@ class Hero(MovableObject):
         if self.bit_wall((self.x, self.y)):
             self.set_pos(self.last_position[0], self.last_position[1])
 
+        self.cookie_pickup()
+
     def automatic_move(self, in_direction: int):
         if_collides = self.check_reachable(in_direction)
 
@@ -312,9 +329,24 @@ class Hero(MovableObject):
         else:
             self.cur_dir = self.last_dir
 
+    def cookie_pickup(self):
+        collision_rect = pygame.Rect(self.x, self.y, self.size, self.size)
+        cookies = self.rend.get_cookies()
+        game_objects = self.rend.get_game_objects()
+        for cookie in cookies:
+            collides = collision_rect.colliderect(cookie.get_shape())
+            if collides and cookie in game_objects:
+                game_objects.remove(cookie)
+                self.score += 1
+
     def draw(self):
         half_size = self.size / 2
         pygame.draw.circle(self.surface, self.color, (self.x + half_size, self.y + half_size), half_size)
+
+
+class Cookie(Object):
+    def __init__(self, surface, x, y):
+        super().__init__(surface, x, y, 4, (255, 255, 0), True)
 
 
 if __name__ == "__main__":
@@ -333,6 +365,10 @@ if __name__ == "__main__":
         ghost = Ghost(game_renderer, translated[0], translated[1], unified_size, pacman_game,
                       pacman_game.ghost_colors[i % 4])
         game_renderer.add_object(ghost)
+    for cookie_space in pacman_game.cookie_spaces:
+        translated = trans_1(cookie_space)
+        cookie = Cookie(game_renderer, translated[0] + unified_size / 2, translated[1] + unified_size / 2)
+        game_renderer.add_cookie(cookie)
     pacman = Hero(game_renderer, unified_size, unified_size, unified_size)
     game_renderer.add_hero(pacman)
     game_renderer.tick(120)
