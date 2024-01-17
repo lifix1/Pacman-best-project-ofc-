@@ -10,8 +10,8 @@ RIGHT = 2
 DOWN = 3,
 NONE = 4
 running = True
-WIDTH = 800
-HEIGHT = 800
+WIDTH = 1920
+HEIGHT = 1080
 GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
