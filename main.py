@@ -32,11 +32,13 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
             running = False
+        if event.type == pygame.QUIT:
+            running = False
     screen.blit(background, (0, 0))
-    draw_text(screen, f'Правила игры:', 100, 100, 0)
-    draw_text(screen, f'Передвижение по стрелочкам', 100, 100, 100)
-    draw_text(screen, f'Старайтесь не попасться призракам', 100, 100, 200)
-    draw_text(screen, f'Ешьте печенье', 100, 100, 300)
+    draw_text(screen, f'Правила игры:', 50, 350, 0)
+    draw_text(screen, f'Передвижение по стрелочкам', 50, 350, 100)
+    draw_text(screen, f'Старайтесь не попасться призракам', 50, 350, 200)
+    draw_text(screen, f'Ешьте печенье', 50, 350, 300)
     pygame.display.flip()
 
 
