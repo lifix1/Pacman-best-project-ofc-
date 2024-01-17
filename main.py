@@ -3,6 +3,7 @@ import random
 import numpy as np
 import tcod
 
+pygame.init()
 LEFT = 0
 UP = 1
 RIGHT = 2
@@ -114,6 +115,7 @@ class Renderer:
         self.walls = []
         self.points = []
         self.cookies = []
+        self.lives = 3
 
     def tick(self, fps: int):
         while not self.ready:
