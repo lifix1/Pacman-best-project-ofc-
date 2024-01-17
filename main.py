@@ -87,7 +87,7 @@ class Object:
         pass
 
     def get_shape(self):
-        return self.shape
+        return pygame.Rect(self.x, self.y, self.size, self.size)
 
     def set_pos(self, x, y):
         self.x = x
@@ -210,6 +210,8 @@ class Renderer:
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     running = False
+                if event.type == pygame.QUIT:
+                    running = False
             screen.blit(background, (0, 0))
             draw_text(screen, f'Вы проиграли', 50, 350, 0)
             draw_text(screen, f'Ваши очки: {self.hero.score}', 50, 350, 100)
@@ -276,7 +278,7 @@ class MovableObject(Object):
 
 
 class Ghost(MovableObject):
-    def __init__(self, surface, x, y, size: int, controller,sprite_path="data/ghost_ghost.png", color=(255, 0, 0)):
+    def __init__(self, surface, x, y, size: int, controller, sprite_path="data/ghost_ghost.png", color=(255, 0, 0)):
         super().__init__(surface, x, y, size, color, False)
         self.controller = controller
         self.sprite_normal = pygame.image.load(sprite_path)
