@@ -3,27 +3,21 @@ import random
 import numpy as np
 import tcod
 
+pygame.init()
 LEFT = 0
 UP = 1
 RIGHT = 2
 DOWN = 3,
 NONE = 4
 running = True
-WIDTH = 1920
-HEIGHT = 1080
+WIDTH = 800
+HEIGHT = 800
+text_coord = 50
 GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
 background = pygame.image.load("data/fon.jpg")
-
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            running = False
-    screen.blit(background, (0, 0))
-    pygame.display.flip()
-
-font_name = pygame.font.match_font('arial')
+font_name = pygame.font.match_font('arial', 30)
 
 
 def draw_text(surf, text, size, x, y):
@@ -32,6 +26,18 @@ def draw_text(surf, text, size, x, y):
     text_rect = text_surface.get_rect()
     text_rect.midtop = (x, y)
     surf.blit(text_surface, text_rect)
+
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            running = False
+    screen.blit(background, (0, 0))
+    draw_text(screen, f'Правила игры:', 100, 100, 0)
+    draw_text(screen, f'Передвижение по стрелочкам', 100, 100, 100)
+    draw_text(screen, f'Старайтесь не попасться призракам', 100, 100, 200)
+    draw_text(screen, f'Ешьте печенье', 100, 100, 300)
+    pygame.display.flip()
 
 
 def trans_2(coords):
@@ -364,7 +370,7 @@ class Hero(MovableObject):
             self.automatic_move(self.cur_dir)
         else:
             self.automatic_move(self.dir_buffer)
-            self.current_direction = self.dir_buffer
+            self.cur_dir = self.dir_buffer
 
         if self.bit_wall((self.x, self.y)):
             self.set_pos(self.last_position[0], self.last_position[1])
