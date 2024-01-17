@@ -11,7 +11,7 @@ NONE = 4
 running = True
 WIDTH = 1920
 HEIGHT = 1080
-
+GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
 background = pygame.image.load("data/fon.jpg")
@@ -22,6 +22,16 @@ while running:
             running = False
     screen.blit(background, (0, 0))
     pygame.display.flip()
+
+font_name = pygame.font.match_font('arial')
+
+
+def draw_text(surf, text, size, x, y):
+    font = pygame.font.Font(font_name, size)
+    text_surface = font.render(text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
 
 
 def trans_2(coords):
@@ -104,7 +114,7 @@ class Renderer:
             for object in self.objects:
                 object.tick()
                 object.draw()
-
+            draw_text(self.screen, str(self.hero.score), 18, 100, 0)
             pygame.display.flip()
             self.clock.tick(fps)
             self.screen.fill((0, 0, 0))
@@ -134,7 +144,25 @@ class Renderer:
         self.hero = hero
 
     def events_helper(self):
-        if self.hero.get_pos() == ghost.get_pos():
+        collision = pygame.Rect(self.hero.get_pos()[0], self.hero.get_pos()[1], self.hero.size, self.hero.size)
+        collision1 = pygame.Rect(ghost1.get_pos()[0], ghost1.get_pos()[1], ghost1.size, ghost1.size)
+        collides1 = collision.colliderect(collision1)
+        if ghost2:
+            collision2 = pygame.Rect(ghost2.get_pos()[0], ghost2.get_pos()[1], ghost2.size, ghost2.size)
+            collides2 = collision.colliderect(collision2)
+        else:
+            collides2 = False
+        if ghost3:
+            collision3 = pygame.Rect(ghost3.get_pos()[0], ghost3.get_pos()[1], ghost3.size, ghost3.size)
+            collides3 = collision.colliderect(collision3)
+        else:
+            collides3 = False
+        if ghost4:
+            collision4 = pygame.Rect(ghost4.get_pos()[0], ghost4.get_pos()[1], ghost4.size, ghost4.size)
+            collides4 = collision.colliderect(collision4)
+        else:
+            collides4 = False
+        if collides1 or collides2 or collides3 or collides4:
             self.ready = True
             running = True
             screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -379,7 +407,6 @@ if __name__ == "__main__":
     pacman_game = Controller()
     size = pacman_game.size
     game_renderer = Renderer(size[0] * unified_size, size[1] * unified_size)
-
     for y, row in enumerate(pacman_game.maze):
         for x, column in enumerate(row):
             if column == 0:
@@ -390,6 +417,27 @@ if __name__ == "__main__":
         ghost = Ghost(game_renderer, translated[0], translated[1], unified_size, pacman_game,
                       pacman_game.ghost_colors[i % 4])
         game_renderer.add_object(ghost)
+        GHOSTS.append(ghost)
+    if len(GHOSTS) == 4:
+        ghost1 = GHOSTS[0]
+        ghost2 = GHOSTS[1]
+        ghost3 = GHOSTS[2]
+        ghost4 = GHOSTS[3]
+    elif len(GHOSTS) == 3:
+        ghost1 = GHOSTS[0]
+        ghost2 = GHOSTS[1]
+        ghost3 = GHOSTS[2]
+        ghost4 = None
+    elif len(GHOSTS) == 2:
+        ghost1 = GHOSTS[0]
+        ghost2 = GHOSTS[1]
+        ghost3 = None
+        ghost4 = None
+    elif len(GHOSTS) == 1:
+        ghost1 = GHOSTS[0]
+        ghost2 = None
+        ghost3 = None
+        ghost4 = None
     for cookie_space in pacman_game.cookie_spaces:
         translated = trans_1(cookie_space)
         cookie = Cookie(game_renderer, translated[0] + unified_size / 2, translated[1] + unified_size / 2)
