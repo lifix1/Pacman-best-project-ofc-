@@ -3,7 +3,6 @@ import random
 import numpy as np
 import tcod
 
-pygame.init()
 LEFT = 0
 UP = 1
 RIGHT = 2
@@ -16,7 +15,7 @@ GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
 background = pygame.image.load("data/fon.jpg")
-font_name = pygame.font.match_font('arial')
+font_name = pygame.font.match_font('arial', 30)
 
 
 def draw_text(surf, text, size, x, y):
@@ -31,7 +30,13 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
             running = False
+        if event.type == pygame.QUIT:
+            running = False
     screen.blit(background, (0, 0))
+    draw_text(screen, f'Правила игры:', 50, 350, 0)
+    draw_text(screen, f'Передвижение по стрелочкам', 50, 350, 100)
+    draw_text(screen, f'Старайтесь не попасться призракам', 50, 350, 200)
+    draw_text(screen, f'Ешьте печенье', 50, 350, 300)
     pygame.display.flip()
 
 
@@ -109,7 +114,6 @@ class Renderer:
         self.walls = []
         self.points = []
         self.cookies = []
-        self.lives = 3
 
     def tick(self, fps: int):
         while not self.ready:
@@ -376,7 +380,7 @@ class Hero(MovableObject):
             self.automatic_move(self.cur_dir)
         else:
             self.automatic_move(self.dir_buffer)
-            self.current_direction = self.dir_buffer
+            self.cur_dir = self.dir_buffer
 
         if self.bit_wall((self.x, self.y)):
             self.set_pos(self.last_position[0], self.last_position[1])
