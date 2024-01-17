@@ -3,6 +3,7 @@ import random
 import numpy as np
 import tcod
 
+pygame.init()
 LEFT = 0
 UP = 1
 RIGHT = 2
@@ -15,14 +16,6 @@ GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
 background = pygame.image.load("data/fon.jpg")
-
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            running = False
-    screen.blit(background, (0, 0))
-    pygame.display.flip()
-
 font_name = pygame.font.match_font('arial')
 
 
@@ -32,6 +25,14 @@ def draw_text(surf, text, size, x, y):
     text_rect = text_surface.get_rect()
     text_rect.midtop = (x, y)
     surf.blit(text_surface, text_rect)
+
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            running = False
+    screen.blit(background, (0, 0))
+    pygame.display.flip()
 
 
 def trans_2(coords):
@@ -108,13 +109,14 @@ class Renderer:
         self.walls = []
         self.points = []
         self.cookies = []
+        self.lives = 3
 
     def tick(self, fps: int):
         while not self.ready:
             for object in self.objects:
                 object.tick()
                 object.draw()
-            draw_text(self.screen, str(self.hero.score), 18, 100, 0)
+            draw_text(self.screen, f'ЖИЗНЕЙ {str(self.lives)} ОЧКОВ {str(self.hero.score)}', 18, 100, 0)
             pygame.display.flip()
             self.clock.tick(fps)
             self.screen.fill((0, 0, 0))
@@ -163,18 +165,7 @@ class Renderer:
         else:
             collides4 = False
         if collides1 or collides2 or collides3 or collides4:
-            self.ready = True
-            running = True
-            screen = pygame.display.set_mode((WIDTH, HEIGHT))
-            pygame.display.set_caption("Заставка для игры")
-            background = pygame.image.load("data/fon.jpg")
-
-            while running:
-                for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONDOWN:
-                        running = False
-                screen.blit(background, (0, 0))
-                pygame.display.flip()
+            self.kill_pacman()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.ready = True
@@ -193,6 +184,27 @@ class Renderer:
     def add_cookie(self, obj: Object):
         self.objects.append(obj)
         self.cookies.append(obj)
+
+    def kill_pacman(self):
+        self.lives -= 1
+        self.hero.set_pos(32, 32)
+        self.hero.set_dir(NONE)
+        if self.lives == 0:
+            self.end_game()
+
+    def end_game(self):
+        self.ready = True
+        running = True
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("Заставка для игры")
+        background = pygame.image.load("data/fon.jpg")
+
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    running = False
+            screen.blit(background, (0, 0))
+            pygame.display.flip()
 
 
 class MovableObject(Object):
