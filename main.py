@@ -10,8 +10,8 @@ RIGHT = 2
 DOWN = 3,
 NONE = 4
 running = True
-WIDTH = 1920
-HEIGHT = 1080
+WIDTH = 800
+HEIGHT = 800
 GHOSTS = []
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Заставка для игры")
@@ -212,7 +212,7 @@ class Renderer:
                     running = False
             screen.blit(background, (0, 0))
             draw_text(screen, f'Вы проиграли', 50, 350, 0)
-            draw_text(screen, f'Ваши очки: {self.hero.score}', 50, 350, 0)
+            draw_text(screen, f'Ваши очки: {self.hero.score}', 50, 350, 100)
             pygame.display.flip()
 
 
@@ -221,6 +221,7 @@ class MovableObject(Object):
         super().__init__(surface, x, y, size, color, circle)
         self.cur_dir = NONE
         self.dir_buffer = NONE
+        self.image = pygame.image.load('data/ghost.png')
         self.last_dir = NONE
         self.porydok = []
         self.next_target = None
@@ -269,11 +270,16 @@ class MovableObject(Object):
     def ready_aim(self):
         pass
 
+    def draw(self):
+        self.image = pygame.transform.scale(self.image, (32, 32))
+        self.surface.blit(self.image, self.get_shape())
+
 
 class Ghost(MovableObject):
-    def __init__(self, surface, x, y, size: int, controller, color=(255, 0, 0)):
+    def __init__(self, surface, x, y, size: int, controller,sprite_path="data/ghost_ghost.png", color=(255, 0, 0)):
         super().__init__(surface, x, y, size, color, False)
         self.controller = controller
+        self.sprite_normal = pygame.image.load(sprite_path)
 
     def ready_aim(self):
         if (self.x, self.y) == self.next_target:
@@ -308,6 +314,10 @@ class Ghost(MovableObject):
         elif direction == RIGHT:
             self.set_pos(self.x + 1, self.y)
 
+    def draw(self):
+        self.image = self.sprite_normal
+        super(Ghost, self).draw()
+
 
 class Pathfinder:
     def __init__(self, arr):
@@ -332,10 +342,10 @@ class Controller:
         self.size = (0, 0)
         self.convert()
         self.ghost_colors = [
-            (255, 184, 255),
-            (255, 0, 20),
-            (0, 255, 255),
-            (255, 184, 82)
+            "data/ghost.png",
+            "data/ghost_pink.png",
+            "data/ghost_orange.png",
+            "data/ghost_blue.png"
         ]
         self.p = Pathfinder(self.maze)
 
@@ -371,6 +381,7 @@ class Hero(MovableObject):
         super().__init__(surface, x, y, size, (255, 255, 0), False)
         self.last_position = (0, 0)
         self.score = 0
+        self.image = pygame.image.load("data/paku.png")
 
     def tick(self):
         if self.x < 0:
@@ -414,8 +425,7 @@ class Hero(MovableObject):
                 self.score += 1
 
     def draw(self):
-        half_size = self.size / 2
-        pygame.draw.circle(self.surface, self.color, (self.x + half_size, self.y + half_size), half_size)
+        super(Hero, self).draw()
 
 
 class Cookie(Object):
