@@ -204,6 +204,8 @@ class Renderer:
         screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Заставка для игры")
         background = pygame.image.load("data/fon.jpg")
+        draw_text(screen, f'Вы проиграли', 50, 350, 0)
+        draw_text(screen, f'Ваши очки: {self.hero.score}', 50, 350, 0)
 
         while running:
             for event in pygame.event.get():
