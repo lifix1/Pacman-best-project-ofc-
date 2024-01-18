@@ -386,11 +386,6 @@ class Hero(MovableObject):
         self.image = pygame.image.load("data/paku.png")
 
     def tick(self):
-        if self.x < 0:
-            self.x = self.rend.width
-
-        if self.x > self.rend.width:
-            self.x = 0
 
         self.last_position = self.get_pos()
 
